@@ -1,0 +1,11 @@
+telegram:
+  bot:
+    token:
+freepik:
+  token:
+
+file:
+  subscribers:
+    path: /Users/andrew_kononov/IdeaProjects/tg-bot/work/subscribers.txt
+  category:
+    path: /Users/andrew_kononov/IdeaProjects/tg-bot/work/categories.txt
