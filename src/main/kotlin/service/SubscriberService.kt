@@ -7,6 +7,7 @@ class SubscriberService {
     private lateinit var subscribers: MutableList<String>
     private val path = Configuration.getSubscribersFilePath()
     private val file = File(path)
+    private val logger = LoggerService(SubscriberService::class.java)
 
     init {
         loadFile()
@@ -25,6 +26,7 @@ class SubscriberService {
 
 
     private fun loadFile() {
+        logger.writeLogMessage(LogMessageLevel.INFO, "Starting to read the subscribers.txt file.")
         try {
             subscribers = if(file.exists() && file.length() > 0) {
                 file.readLines()
@@ -34,8 +36,9 @@ class SubscriberService {
             } else {
                 mutableListOf()
             }
+            logger.writeLogMessage(LogMessageLevel.INFO, "subscribers.txt file is reading successful. ${subscribers.size} lines have been read")
         } catch (e: Exception) {
-            e.printStackTrace()
+            logger.writeLogMessage(LogMessageLevel.ERROR, "Error reading the subscribers.txt file. ${e.message}")
             subscribers = mutableListOf()
         }
     }
@@ -46,9 +49,10 @@ class SubscriberService {
                 it.append(user)
                 it.append("\n")
             }
+            logger.writeLogMessage(LogMessageLevel.INFO, "User $user has been successfully added to the file.")
             return Status.OK
         } catch (e: Exception) {
-            e.printStackTrace()
+            logger.writeLogMessage(LogMessageLevel.ERROR, "Error when adding user $user to the file. ${e.message}")
             return Status.ERROR
         }
     }
@@ -82,9 +86,10 @@ class SubscriberService {
                     it.append("\n")
                 }
             }
+            logger.writeLogMessage(LogMessageLevel.INFO, "User $user has been successfully deleted to the file.")
             return Status.OK
         } catch (e: Exception) {
-            e.printStackTrace()
+            logger.writeLogMessage(LogMessageLevel.ERROR, "Error when adding user $user to the file. ${e.message}")
             return Status.ERROR
         }
     }
@@ -94,7 +99,9 @@ class SubscriberService {
             file.writer().use {
                 it.write("")
             }
+            logger.writeLogMessage(LogMessageLevel.INFO, "The file has been successfully cleaned.")
         } catch (e: Exception) {
+            logger.writeLogMessage(LogMessageLevel.ERROR, "Error when clearing the file. ${e.message}")
             e.printStackTrace()
         }
     }

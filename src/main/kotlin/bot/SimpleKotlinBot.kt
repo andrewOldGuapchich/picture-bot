@@ -1,14 +1,14 @@
 package com.andrew.tg.bot
 
 import com.andrew.tg.config.Configuration
-import com.andrew.tg.service.PictureService
-import com.andrew.tg.service.Status
-import com.andrew.tg.service.SubscriberService
+import com.andrew.tg.service.*
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Update
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow
 import java.util.*
 import kotlin.concurrent.schedule
 
@@ -17,6 +17,8 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
     private val botToken: String = Configuration.getTelegramToken()
     private val pictureService = PictureService()
     private lateinit var photoTimer: Timer
+    private val logger = LoggerService(SimpleKotlinBot::class.java)
+
     init {
         startAutoSending()
     }
@@ -37,28 +39,36 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             "/status" -> sendStatus(chatId)
             "/now" -> sendPhotoNow(chatId)
             "/help" -> sendHelp(chatId)
+            "Фото сейчас" -> sendPhotoNow(chatId)
+            "Остановить рассылку" -> handleStopCommand(chatId)
+            "Обо мне" -> sendHelp(chatId)
             else -> sendUnknownCommand(chatId)
         }
     }
 
     private fun handleStartCommand(chatId: String) {
+        logger.writeLogMessage(LogMessageLevel.INFO, "The 'Start' button is pressed.")
+
         if(subscriberService.existUser(chatId)) {
-            sendMessage(chatId, "ℹ️ Вы уже подписаны на рассылку фото!\n" +
-                    "Следующее фото будет через 10 минут.\n" +
-                    "Используйте /now чтобы получить фото сейчас.")
+            sendMessageWithKeyboard(
+                chatId,
+                "ℹ️ Вы уже подписаны на рассылку фото!\n" +
+                        "Следующее фото будет через 10 минут.\n" +
+                        "Используйте кнопку ниже или /now чтобы получить фото сейчас."
+            )
         } else {
             when (subscriberService.addUser(chatId)) {
                 Status.OK -> {
-                    println("User $chatId added")
                     sendWelcomeMessage(chatId)
                     sendPhotoWithDelay(chatId, 2000)
                 }
-                Status.ERROR -> println("Error!")
+                Status.ERROR -> return
             }
         }
     }
 
     private fun handleStopCommand(chatId: String) {
+        logger.writeLogMessage(LogMessageLevel.INFO, "The 'Stop' button is pressed.")
         if(!subscriberService.existUser(chatId)) {
             sendMessage(chatId, "ℹ️ Вы не были подписаны на рассылку.")
         } else {
@@ -66,7 +76,7 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
                 Status.OK -> {
                     sendMessage(chatId, "❌ Вы отписались от рассылки фото.\n" +
                             "Чтобы снова получать фото, отправьте /start")
-                    println("Пользователь отписался: $chatId")
+                    logger.writeLogMessage(LogMessageLevel.INFO, "User $chatId has unsubscribed from the mailing list.")
                 }
                 Status.ERROR -> sendMessage(chatId, "ℹ️ Вы не были подписаны на рассылку.")
             }
@@ -84,51 +94,42 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             
             ⏰ Первое фото придет через несколько секунд...
             
-            Доступные команды:
-            /stop - Отписаться от рассылки
-            /status - Статус подписки
-            /now - Получить фото немедленно
-            /help - Помощь
+            Используйте кнопки ниже для управления:
             
             Приятного просмотра! 😊
         """.trimIndent()
 
-        sendMessage(chatId, welcomeText)
+        sendMessageWithKeyboard(chatId, welcomeText)
     }
 
     private fun startAutoSending() {
-        println("Запуск таймера автоматической отправки фото...")
         photoTimer = Timer(true)
-        photoTimer.schedule(60 * 1000L, 10 * 60 * 1000L) {
+        photoTimer.schedule(60 * 1000L, 1 * 60 * 1000L) {
             sendPhotosToAllSubscribers()
         }
-        println("Таймер запущен. Интервал: 10 минут")
     }
 
     private fun sendPhotosToAllSubscribers() {
         if (subscriberService.allUser().isEmpty()) {
-            println("Время отправки, но нет подписчиков")
             return
         }
         val photoUrl = pictureService.getPictureUrl()
         val caption = getRandomCaption()
-        println("Начинаю рассылку для ${subscriberService.allUser().size} подписчиков...")
 
         subscriberService.allUser().forEach { chatId ->
             try {
                 Thread.sleep(100)
                 sendPhotoToChat(chatId, photoUrl, caption)
             } catch (e: Exception) {
-                println("Ошибка отправки в чат $chatId: ${e.message}")
+                logger.writeLogMessage(LogMessageLevel.ERROR, "Error sending to the chat $chatId: ${e.message}")
                 if (e.message?.contains("403") == true || e.message?.contains("Forbidden") == true) {
                     when (subscriberService.deleteUser(chatId)) {
-                        Status.OK -> println("Чат $chatId удален (бот заблокирован)")
-                        Status.ERROR -> println("Ошибка при удалении чата!")
+                        Status.OK -> logger.writeLogMessage(LogMessageLevel.INFO, "Chat $chatId deleted (bot is blocked)")
+                        Status.ERROR -> logger.writeLogMessage(LogMessageLevel.ERROR, "Error deleting the chat.")
                     }
                 }
             }
         }
-        println("Рассылка завершена")
     }
 
     private fun sendPhotoToChat(chatId: String, photoUrl: String, caption: String = "") {
@@ -141,9 +142,10 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             sendPhoto.caption = caption
 
             execute(sendPhoto)
-            println("Фото отправлено в чат $chatId")
+            logger.writeLogMessage(LogMessageLevel.INFO, "The photo was sent to the chat $chatId.")
 
         } catch (e: Exception) {
+            logger.writeLogMessage(LogMessageLevel.ERROR, "Error when sending a photo. ${e.message}")
             throw e
         }
     }
@@ -153,7 +155,7 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             try {
                 val photoUrl = pictureService.getPictureUrl()
                 sendPhotoToChat(chatId, photoUrl, "Ваше первое фото! 🎉")
-                sendMessage(chatId, "✅ Отлично! Следующее фото будет через 10 минут.")
+                sendMessageWithKeyboard(chatId, "✅ Отлично! Следующее фото будет через 10 минут.")
             } catch (e: Exception) {
                 sendMessage(chatId, "❌ Не удалось отправить первое фото. Попробуйте позже.")
             }
@@ -165,7 +167,6 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             sendMessage(chatId, "ℹ️ Сначала подпишитесь на рассылку командой /start")
             return
         }
-
         try {
             val photoUrl = pictureService.getPictureUrl()
             sendPhotoToChat(chatId, photoUrl, "Специально для вас! ⭐")
@@ -186,15 +187,13 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             Всего подписчиков: $totalSubscribers
             
             ${if (isSubscribed) "Следующее фото будет через 10 минут" else "Отправьте /start для подписки"}
-            
-            Команды:
-            /start - Подписаться
-            /stop - Отписаться
-            /now - Фото сейчас
-            /help - Помощь
         """.trimIndent()
 
-        sendMessage(chatId, statusText)
+        if (isSubscribed) {
+            sendMessageWithKeyboard(chatId, statusText)
+        } else {
+            sendMessage(chatId, statusText)
+        }
     }
 
     private fun sendHelp(chatId: String) {
@@ -217,7 +216,7 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             Наслаждайтесь красивыми фото! ✨
         """.trimIndent()
 
-        sendMessage(chatId, helpText)
+        sendMessageWithKeyboard(chatId, helpText)
     }
 
     private fun sendUnknownCommand(chatId: String) {
@@ -242,8 +241,41 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             message.chatId = chatId
             message.text = text
             execute(message)
+            logger.writeLogMessage(LogMessageLevel.INFO, "The message was sent successfully.")
         } catch (e: Exception) {
-            println("Ошибка отправки сообщения: ${e.message}")
+            logger.writeLogMessage(LogMessageLevel.ERROR, "Error when sending a message. ${e.message}")
+        }
+    }
+
+    private fun sendMessageWithKeyboard(chatId: String, text: String) {
+        try {
+            val message = SendMessage()
+            message.chatId = chatId
+            message.text = text
+
+            val keyboardMarkup = ReplyKeyboardMarkup()
+            val keyboard = mutableListOf<KeyboardRow>()
+
+            val row1 = KeyboardRow()
+            row1.add("Фото сейчас")
+            keyboard.add(row1)
+
+            val row2 = KeyboardRow()
+            row2.add("Остановить рассылку")
+            row2.add("Обо мне")
+            keyboard.add(row2)
+
+            keyboardMarkup.keyboard = keyboard
+            keyboardMarkup.resizeKeyboard = true
+            keyboardMarkup.oneTimeKeyboard = false
+            keyboardMarkup.selective = true
+
+            message.replyMarkup = keyboardMarkup
+
+            execute(message)
+            logger.writeLogMessage(LogMessageLevel.INFO, "The message with keyboard was sent successfully.")
+        } catch (e: Exception) {
+            logger.writeLogMessage(LogMessageLevel.ERROR, "Error when sending a message with keyboard. ${e.message}")
         }
     }
 

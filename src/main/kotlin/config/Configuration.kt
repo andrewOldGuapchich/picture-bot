@@ -10,6 +10,12 @@ object Configuration {
     private val mapper = ObjectMapper(YAMLFactory())
     private lateinit var config: Map<String, Any>
 
+    fun getProperty(propName: String): String {
+        load()
+        return getNestedValue(propName) as? String
+            ?: throw IllegalStateException("Prop $propName not found in application.yaml")
+    }
+
     fun getTelegramToken(): String {
         load()
         return getNestedValue("telegram.bot.token") as? String

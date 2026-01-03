@@ -33,8 +33,6 @@ tasks {
         manifest {
             attributes["Main-Class"] = "com.andrew.tg.MainKt"
         }
-
-        // Включаем все зависимости в JAR (fat jar)
         from(configurations.runtimeClasspath.get().map {
             if (it.isDirectory) it else zipTree(it)
         })
