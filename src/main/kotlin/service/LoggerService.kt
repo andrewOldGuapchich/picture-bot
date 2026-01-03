@@ -11,7 +11,7 @@ class LoggerService<T> (
     private val file = File(logFilePath)
 
     fun writeLogMessage(level: LogMessageLevel, text: String) {
-        val logLine = "${LocalDateTime.now()} $level ${clazz.name}: $text \n"
+        val logLine = "${LocalDateTime.now()} [$level] [${clazz.name}]: $text \n"
         try {
             file.appendText(logLine)
         } catch (e: Exception) {
