@@ -36,7 +36,8 @@ object Configuration {
         return getNestedValue("file.category.path") as? String ?: ""
     }
 
-    private fun load(configPath: String = "src/main/resources/application.yaml") {
+    //private fun load(configPath: String = "/Users/andrew_kononov/IdeaProjects/tg-bot/application.yaml") {
+    private fun load(configPath: String = "/opt/application/picture-bot/application.yaml") {
         val file = File(configPath)
         config = if (file.exists()) {
             file.inputStream().use { loadFromStream(it) }
