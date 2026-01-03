@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "2.0.10"
+    application
 }
 
 group = "com.andrew.tg"
@@ -21,4 +22,23 @@ tasks.test {
 }
 kotlin {
     jvmToolchain(17)
+}
+
+application {
+    mainClass.set("com.andrew.tg.Main")
+}
+
+tasks {
+    jar {
+        manifest {
+            attributes["Main-Class"] = "com.andrew.tg.MainKt"
+        }
+
+        // Включаем все зависимости в JAR (fat jar)
+        from(configurations.runtimeClasspath.get().map {
+            if (it.isDirectory) it else zipTree(it)
+        })
+
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
 }

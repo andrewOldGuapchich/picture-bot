@@ -4,6 +4,7 @@ import com.andrew.tg.bot.SimpleKotlinBot
 import org.telegram.telegrambots.meta.TelegramBotsApi
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
 
+class Main
 fun main() {
     println("Запуск Kotlin Telegram бота...")
     try {
