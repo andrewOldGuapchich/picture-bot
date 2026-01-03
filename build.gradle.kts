@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.0.10"
     application
+    java
 }
 
 group = "com.andrew.tg"
@@ -31,7 +32,7 @@ application {
 tasks {
     jar {
         manifest {
-            attributes["Main-Class"] = "com.andrew.tg.MainKt"
+            attributes["Main-Class"] = "com.andrew.tg.Main"
         }
         from(configurations.runtimeClasspath.get().map {
             if (it.isDirectory) it else zipTree(it)
