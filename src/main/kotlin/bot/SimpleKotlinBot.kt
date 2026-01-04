@@ -15,12 +15,14 @@ import kotlin.concurrent.schedule
 class SimpleKotlinBot : TelegramLongPollingBot() {
     private val subscriberService = SubscriberService()
     private val botToken: String = Configuration.getTelegramToken()
+    private val delay = Configuration.getProperty("telegram.bot.delay").toInt()
     private val pictureService = PictureService()
     private lateinit var photoTimer: Timer
     private val logger = LoggerService(SimpleKotlinBot::class.java)
 
     init {
-        startAutoSending()
+        if(subscriberService.allUser().isNotEmpty())
+            startAutoSending()
     }
 
     @Deprecated("Deprecated in Java")
@@ -59,6 +61,8 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
         } else {
             when (subscriberService.addUser(chatId)) {
                 Status.OK -> {
+                    if(subscriberService.isFirstUser())
+                        startAutoSending()
                     sendWelcomeMessage(chatId)
                     sendPhotoWithDelay(chatId, 2000)
                 }
@@ -85,7 +89,7 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
 
     private fun sendWelcomeMessage(chatId: String) {
         val welcomeText = """
-            🌟 Добро пожаловать в AutoPhotoBot! 🌟
+            🌟 Добро пожаловать! 🌟
             
             Я бот, который будет радовать вас красивыми фотографиями!
             
@@ -103,8 +107,9 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
     }
 
     private fun startAutoSending() {
+        logger.writeLogMessage(LogMessageLevel.INFO, "Start timer. Send delay - $delay")
         photoTimer = Timer(true)
-        photoTimer.schedule(60 * 1000L, 15 * 60 * 1000L) {
+        photoTimer.schedule(delay * 60 * 1000L, delay * 60 * 1000L) {
             sendPhotosToAllSubscribers()
         }
     }
@@ -155,7 +160,7 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             try {
                 val photoUrl = pictureService.getPictureUrl()
                 sendPhotoToChat(chatId, photoUrl, "Ваше первое фото! 🎉")
-                sendMessageWithKeyboard(chatId, "✅ Отлично! Следующее фото будет через 10 минут.")
+                sendMessageWithKeyboard(chatId, "✅ Отлично! Следующее фото будет через 15 минут.")
             } catch (e: Exception) {
                 sendMessage(chatId, "❌ Не удалось отправить первое фото. Попробуйте позже.")
             }
@@ -186,7 +191,7 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             $status
             Всего подписчиков: $totalSubscribers
             
-            ${if (isSubscribed) "Следующее фото будет через 10 минут" else "Отправьте /start для подписки"}
+            ${if (isSubscribed) "Следующее фото будет через 15 минут" else "Отправьте /start для подписки"}
         """.trimIndent()
 
         if (isSubscribed) {
@@ -200,7 +205,7 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
         val helpText = """
             🤖 AutoPhotoBot - Помощь
             
-            Я автоматически отправляю красивые фото каждые 10 минут.
+            Я автоматически отправляю красивые фото каждые 15 минут.
             
             Основные команды:
             /start - Начать получать фото (подписаться)
@@ -210,7 +215,7 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
             /help - Эта справка
             
             📸 Фото берутся из открытых источников
-            ⏰ Интервал отправки: 10 минут
+            ⏰ Интервал отправки: 15 минут
             🔄 Бот работает 24/7
             
             Наслаждайтесь красивыми фото! ✨

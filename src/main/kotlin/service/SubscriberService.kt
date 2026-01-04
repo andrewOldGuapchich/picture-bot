@@ -23,7 +23,7 @@ class SubscriberService {
     fun deleteUser(user: String) = delete(user)
 
     fun existUser(user: String): Boolean = subscribers.contains(user)
-
+    fun isFirstUser(): Boolean = subscribers.size == 1
 
     private fun loadFile() {
         logger.writeLogMessage(LogMessageLevel.INFO, "Starting to read the subscribers.txt file.")
@@ -45,10 +45,8 @@ class SubscriberService {
 
     private fun add(user: String): Status {
         try {
-            file.writer().use {
-                it.append(user)
-                it.append("\n")
-            }
+            file.appendText(user)
+            file.appendText("\n")
             logger.writeLogMessage(LogMessageLevel.INFO, "User $user has been successfully added to the file.")
             return Status.OK
         } catch (e: Exception) {
@@ -62,11 +60,9 @@ class SubscriberService {
         this.subscribers.addAll(users)
         clearFile()
         try {
-            file.writer().use {
-                this.subscribers.forEach { user ->
-                    it.append(user)
-                    it.append("\n")
-                }
+            this.subscribers.forEach { user ->
+                file.appendText(user)
+                file.appendText("\n")
             }
             return Status.OK
         } catch (e: Exception) {
@@ -80,11 +76,9 @@ class SubscriberService {
         this.subscribers.remove(user)
         clearFile()
         try {
-            file.writer().use {
-                this.subscribers.forEach { user ->
-                    it.append(user)
-                    it.append("\n")
-                }
+            this.subscribers.forEach {
+                file.appendText(it)
+                file.appendText("\n")
             }
             logger.writeLogMessage(LogMessageLevel.INFO, "User $user has been successfully deleted to the file.")
             return Status.OK
