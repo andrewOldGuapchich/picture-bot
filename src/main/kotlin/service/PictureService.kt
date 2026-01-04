@@ -25,7 +25,7 @@ class PictureService {
         val imageUrls = mutableListOf<String>()
 
         val data = rootNode.path("data")
-        logger.debug("Receiving 'data': $data")
+        logger.debug("Receiving 'data': ${objectMapper.writeValueAsString(data)}")
 
         data.forEach { dataItem ->
             val imageUrl = dataItem
@@ -69,7 +69,7 @@ class PictureService {
         val url = buildUrl(filter)
 
         logger.debug(
-            "Url: $url. Filters:\n\t" +
+            "Url: $url.\nFilters:\n\t" +
                 "term: ${filter.term}\n\t" +
                 "page: ${filter.page}\n\t" +
                 "limit: ${filter.limit}"
@@ -100,7 +100,9 @@ class PictureService {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        logger.info("Categories:\n\t ${categories.joinToString("\n\t")}")
+        logger.info("Categories:\n\t" +
+                categories.joinToString("\n\t")
+        )
         return categories
     }
 }
