@@ -13,6 +13,7 @@ repositories {
 
 dependencies {
     implementation("org.telegram:telegrambots:6.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     implementation("com.fasterxml.jackson.core:jackson-core:2.20.1")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2")
     implementation("org.slf4j:slf4j-simple:2.0.9")

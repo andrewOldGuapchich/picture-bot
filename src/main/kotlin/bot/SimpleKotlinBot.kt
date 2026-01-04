@@ -2,6 +2,7 @@ package com.andrew.tg.bot
 
 import com.andrew.tg.config.Configuration
 import com.andrew.tg.service.*
+import kotlinx.coroutines.*
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
@@ -20,9 +21,19 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
     private lateinit var photoTimer: Timer
     private val logger = LoggerService(SimpleKotlinBot::class.java)
 
+    private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val userCoroutines = mutableMapOf<String, Job>()
+
     init {
-        if(subscriberService.allUser().isNotEmpty())
-            startAutoSending()
+        logger.writeLogMessage(LogMessageLevel.INFO, "Init bot!!!")
+        userCoroutines.forEach { (_, j) ->
+            j.cancel()
+        }
+        userCoroutines.clear()
+
+        subscriberService.allUser().forEach { user ->
+            startUserCoroutine(user)
+        }
     }
 
     @Deprecated("Deprecated in Java")
@@ -48,42 +59,49 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
         }
     }
 
-    private fun handleStartCommand(chatId: String) {
+    private fun handleStartCommand(user: String) {
         logger.writeLogMessage(LogMessageLevel.INFO, "The 'Start' button is pressed.")
 
-        if(subscriberService.existUser(chatId)) {
+        if(subscriberService.existUser(user)) {
             sendMessageWithKeyboard(
-                chatId,
+                user,
                 "ℹ️ Вы уже подписаны на рассылку фото!\n" +
                         "Следующее фото будет через 15 минут.\n" +
                         "Используйте кнопку ниже или /now чтобы получить фото сейчас."
             )
         } else {
-            when (subscriberService.addUser(chatId)) {
+            when (subscriberService.addUser(user)) {
                 Status.OK -> {
-                    if(subscriberService.isFirstUser())
-                        startAutoSending()
-                    sendWelcomeMessage(chatId)
-                    sendPhotoWithDelay(chatId, 2000)
+                    sendWelcomeMessage(user)
+                    sendPhotoWithDelay(user, 2000)
+                    startUserCoroutine(user)
                 }
                 Status.ERROR -> return
             }
         }
     }
 
-    private fun handleStopCommand(chatId: String) {
+    private fun handleStopCommand(user: String) {
         logger.writeLogMessage(LogMessageLevel.INFO, "The 'Stop' button is pressed.")
-        if(!subscriberService.existUser(chatId)) {
-            sendMessage(chatId, "ℹ️ Вы не были подписаны на рассылку.")
-        } else {
-            when (subscriberService.deleteUser(chatId)) {
-                Status.OK -> {
-                    sendMessage(chatId, "❌ Вы отписались от рассылки фото.\n" +
-                            "Чтобы снова получать фото, отправьте /start")
-                    logger.writeLogMessage(LogMessageLevel.INFO, "User $chatId has unsubscribed from the mailing list.")
-                }
-                Status.ERROR -> sendMessage(chatId, "ℹ️ Вы не были подписаны на рассылку.")
+        if (!subscriberService.existUser(user)) {
+            sendMessage(user, "ℹ️ Вы не были подписаны на рассылку.")
+            return
+        }
+
+        userCoroutines[user]?.cancel()
+        logger.writeLogMessage(LogMessageLevel.INFO, "Coroutine for user $user was cancelled.")
+        userCoroutines.remove(user)
+
+        when (subscriberService.deleteUser(user)) {
+            Status.OK -> {
+                sendMessage(
+                    user, "❌ Вы отписались от рассылки фото.\n" +
+                            "Чтобы снова получать фото, отправьте /start"
+                )
+                logger.writeLogMessage(LogMessageLevel.INFO, "User $user has unsubscribed from the mailing list.")
             }
+
+            Status.ERROR -> sendMessage(user, "ℹ️ Вы не были подписаны на рассылку.")
         }
     }
 
@@ -282,6 +300,43 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
         } catch (e: Exception) {
             logger.writeLogMessage(LogMessageLevel.ERROR, "Error when sending a message with keyboard. ${e.message}")
         }
+    }
+
+    private fun startUserCoroutine(user: String) {
+        if(userCoroutines.containsKey(user))
+            logger.writeLogMessage(LogMessageLevel.INFO, "Stop kotlin-coroutine for user $user")
+        userCoroutines[user]?.cancel()
+        logger.writeLogMessage(LogMessageLevel.INFO, "Start new kotlin-coroutine for user $user")
+
+        val job = coroutineScope.launch {
+            try {
+                while (isActive && subscriberService.existUser(user)) {
+                    delay(delay * 60 * 1000L)
+
+                    if(!subscriberService.existUser(user)) break
+
+                    try {
+                        val photoUrl = pictureService.getPictureUrl()
+                        val caption = getRandomCaption()
+                        sendPhotoToChat(user, photoUrl, caption)
+                        logger.writeLogMessage(LogMessageLevel.INFO, "Auto photo sent to $user")
+                    } catch (e: Exception) {
+                        logger.writeLogMessage(LogMessageLevel.ERROR, "Error sending auto photo to $user: ${e.message}")
+
+                        if (e.message?.contains("blocked") == true || e.message?.contains("403") == true) {
+                            subscriberService.deleteUser(user)
+                            break
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                logger.writeLogMessage(LogMessageLevel.INFO, "Coroutine for $user cancelled")
+            } catch (e: Exception) {
+                logger.writeLogMessage(LogMessageLevel.ERROR, "Coroutine for $user failed: ${e.message}")
+            }
+        }
+
+        userCoroutines[user] = job
     }
 
     fun shutdown() {
