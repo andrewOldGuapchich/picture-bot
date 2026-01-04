@@ -40,6 +40,7 @@ class SubscriberService {
     }
 
     private fun add(user: String): Status {
+        subscribers.add(user)
         try {
             file.appendText(user)
             file.appendText("\n")
