@@ -50,24 +50,6 @@ class PictureService {
         return imageUrls
     }
 
-    /*
-    fun formatJsonWithJackson(jsonString: String): String {
-    val mapper = ObjectMapper().apply {
-        enable(SerializationFeature.INDENT_OUTPUT)
-    }
-
-    return try {
-        val jsonNode = mapper.readTree(jsonString)
-        mapper.writeValueAsString(jsonNode)
-    } catch (e: Exception) {
-        // Если JSON невалидный, попробуем исправить
-        val fixedJson = fixJsonString(jsonString)
-        val jsonNode = mapper.readTree(fixedJson)
-        mapper.writeValueAsString(jsonNode)
-    }
-}
-     */
-
     private fun buildUrl(filter: Filter): String {
         val url = "https://api.freepik.com/v1/resources?" +
                 "term=${filter.term}&" +
@@ -121,7 +103,7 @@ class PictureService {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        logger.info("Categories:\n\t" +
+        logger.debug("Categories:\n\t" +
                 categories.joinToString("\n\t")
         )
         return categories
