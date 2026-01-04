@@ -26,13 +26,13 @@ kotlin {
 }
 
 application {
-    mainClass.set("com.andrew.tg.Main")
+    mainClass.set("com.andrew.tg.MainKt")
 }
 
 tasks {
     jar {
         manifest {
-            attributes["Main-Class"] = "com.andrew.tg.Main"
+            attributes["Main-Class"] = "com.andrew.tg.MainKt"
         }
         from(configurations.runtimeClasspath.get().map {
             if (it.isDirectory) it else zipTree(it)
