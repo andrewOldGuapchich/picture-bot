@@ -9,10 +9,6 @@ class SubscriberService {
     private val file = File(path)
     private val logger = LoggerService(SubscriberService::class.java)
 
-    init {
-        loadFile()
-    }
-
     fun addUser(user: String) = add(user)
 
     fun allUser(): List<String> {
@@ -23,7 +19,6 @@ class SubscriberService {
     fun deleteUser(user: String) = delete(user)
 
     fun existUser(user: String): Boolean = subscribers.contains(user)
-    fun isFirstUser(): Boolean = subscribers.size == 1
 
     private fun loadFile() {
         logger.info("Starting to read the subscribers.txt file.")

@@ -14,7 +14,7 @@ import java.util.*
 import kotlin.concurrent.schedule
 
 class SimpleKotlinBot : TelegramLongPollingBot() {
-    private val subscriberService = SubscriberService()
+    private var subscriberService: SubscriberService
     private val botToken: String = Configuration.getTelegramToken()
     private val delay = Configuration.getProperty("telegram.bot.delay").toInt()
     private val pictureService = PictureService()
@@ -26,6 +26,7 @@ class SimpleKotlinBot : TelegramLongPollingBot() {
 
     init {
         logger.info( "Init bot!!!")
+        subscriberService = SubscriberService()
         userCoroutines.forEach { (_, j) ->
             j.cancel()
         }
