@@ -7,6 +7,7 @@ import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
 class HttpClient {
+    private val logger = LoggerService(HttpClient::class.java)
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -14,6 +15,7 @@ class HttpClient {
         .build()
 
     fun get(url: String, headers: Map<String, String> = emptyMap()): Triple<Int, String?, String?> {
+        logger.debug("Send http-request. \n\tUrl - $url")
         return try {
             val requestBuilder = Request.Builder()
                 .url(url)

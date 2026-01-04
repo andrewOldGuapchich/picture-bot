@@ -6,21 +6,26 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.File
 
 class PictureService {
+    private val logger = LoggerService(PictureService::class.java)
     private val imageToken = Configuration.getFreepikToken()
     private val categoryFilePath = Configuration.getCategoryFilePath()
     private val httpClient = HttpClient()
 
     fun getPictureUrl(): String {
-        return getUrlList().random()
+        val pictureUrl = getUrlList().random()
+        logger.debug("Picture url: $pictureUrl")
+        return pictureUrl
     }
 
     private fun getUrlList(): List<String> {
+        logger.debug("Start getting 'urlList'.")
         val jsonBody = sendHttpRequest()
         val objectMapper = ObjectMapper()
         val rootNode: JsonNode = objectMapper.readTree(jsonBody)
         val imageUrls = mutableListOf<String>()
 
         val data = rootNode.path("data")
+        logger.debug("Receiving 'data': $data")
 
         data.forEach { dataItem ->
             val imageUrl = dataItem
@@ -34,16 +39,23 @@ class PictureService {
             }
         }
 
+        logger.debug("'imageUrls':")
+        imageUrls.forEach {
+            logger.debug(it)
+        }
+        logger.debug("'imageUrls' size: ${imageUrls.size}")
         return imageUrls
     }
 
     private fun buildUrl(filter: Filter): String {
-        return "https://api.freepik.com/v1/resources?" +
+        val url = "https://api.freepik.com/v1/resources?" +
                 "term=${filter.term}&" +
                 "filters[content_type][photo]=${filter.count}&" +
                 "filters[ai-generated][excluded]=1&" +
                 "page=${filter.page}&" +
                 "limit=${filter.limit}"
+        logger.debug("Building url: $url")
+        return url
     }
 
     private fun sendHttpRequest(): String {
@@ -55,6 +67,14 @@ class PictureService {
         )
 
         val url = buildUrl(filter)
+
+        logger.debug(
+            "Url: $url. Filters:\n\t" +
+                "term: ${filter.term}\n\t" +
+                "page: ${filter.page}\n\t" +
+                "limit: ${filter.limit}"
+        )
+
         val (status, body, error) = httpClient
             .get(url, mapOf("x-freepik-api-key" to imageToken))
 
@@ -80,6 +100,7 @@ class PictureService {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        logger.info("Categories:\n\t ${categories.joinToString("\n\t")}")
         return categories
     }
 }

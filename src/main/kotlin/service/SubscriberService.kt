@@ -26,7 +26,7 @@ class SubscriberService {
     fun isFirstUser(): Boolean = subscribers.size == 1
 
     private fun loadFile() {
-        logger.writeLogMessage(LogMessageLevel.INFO, "Starting to read the subscribers.txt file.")
+        logger.info("Starting to read the subscribers.txt file.")
         try {
             subscribers = if(file.exists() && file.length() > 0) {
                 file.readLines()
@@ -36,9 +36,10 @@ class SubscriberService {
             } else {
                 mutableListOf()
             }
-            logger.writeLogMessage(LogMessageLevel.INFO, "subscribers.txt file is reading successful. ${subscribers.size} lines have been read")
+            logger.debug("${subscribers.size} lines have been read.")
+            logger.info("File subscribers.txt is reading successful.")
         } catch (e: Exception) {
-            logger.writeLogMessage(LogMessageLevel.ERROR, "Error reading the subscribers.txt file. ${e.message}")
+            logger.error( "Error reading the subscribers.txt file. ${e.message}")
             subscribers = mutableListOf()
         }
     }
@@ -47,26 +48,10 @@ class SubscriberService {
         try {
             file.appendText(user)
             file.appendText("\n")
-            logger.writeLogMessage(LogMessageLevel.INFO, "User $user has been successfully added to the file.")
+            logger.info("User $user has been successfully added to the file.")
             return Status.OK
         } catch (e: Exception) {
-            logger.writeLogMessage(LogMessageLevel.ERROR, "Error when adding user $user to the file. ${e.message}")
-            return Status.ERROR
-        }
-    }
-
-    private fun addAll(users: List<String>): Status {
-        loadFile()
-        this.subscribers.addAll(users)
-        clearFile()
-        try {
-            this.subscribers.forEach { user ->
-                file.appendText(user)
-                file.appendText("\n")
-            }
-            return Status.OK
-        } catch (e: Exception) {
-            e.printStackTrace()
+            logger.error( "Error when adding user $user to the file. ${e.message}")
             return Status.ERROR
         }
     }
@@ -80,22 +65,23 @@ class SubscriberService {
                 file.appendText(it)
                 file.appendText("\n")
             }
-            logger.writeLogMessage(LogMessageLevel.INFO, "User $user has been successfully deleted to the file.")
+            logger.info("User $user has been successfully deleted to the file.")
             return Status.OK
         } catch (e: Exception) {
-            logger.writeLogMessage(LogMessageLevel.ERROR, "Error when adding user $user to the file. ${e.message}")
+            logger.error( "Error when adding user $user to the file. ${e.message}")
             return Status.ERROR
         }
     }
 
     private fun clearFile() {
+        logger.info("Start cleaning file.")
         try {
             file.writer().use {
                 it.write("")
             }
-            logger.writeLogMessage(LogMessageLevel.INFO, "The file has been successfully cleaned.")
+            logger.info("The file has been successfully cleaned.")
         } catch (e: Exception) {
-            logger.writeLogMessage(LogMessageLevel.ERROR, "Error when clearing the file. ${e.message}")
+            logger.error( "Error when clearing the file. ${e.message}")
             e.printStackTrace()
         }
     }
