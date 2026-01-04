@@ -3,6 +3,7 @@ package com.andrew.tg.service
 import com.andrew.tg.config.Configuration
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
 import java.io.File
 
 class PictureService {
@@ -20,7 +21,9 @@ class PictureService {
     private fun getUrlList(): List<String> {
         logger.debug("Start getting 'urlList'.")
         val jsonBody = sendHttpRequest()
-        val objectMapper = ObjectMapper()
+        val objectMapper = ObjectMapper().apply {
+            enable(SerializationFeature.INDENT_OUTPUT)
+        }
         val rootNode: JsonNode = objectMapper.readTree(jsonBody)
         val imageUrls = mutableListOf<String>()
 
@@ -46,6 +49,24 @@ class PictureService {
         logger.debug("'imageUrls' size: ${imageUrls.size}")
         return imageUrls
     }
+
+    /*
+    fun formatJsonWithJackson(jsonString: String): String {
+    val mapper = ObjectMapper().apply {
+        enable(SerializationFeature.INDENT_OUTPUT)
+    }
+
+    return try {
+        val jsonNode = mapper.readTree(jsonString)
+        mapper.writeValueAsString(jsonNode)
+    } catch (e: Exception) {
+        // Если JSON невалидный, попробуем исправить
+        val fixedJson = fixJsonString(jsonString)
+        val jsonNode = mapper.readTree(fixedJson)
+        mapper.writeValueAsString(jsonNode)
+    }
+}
+     */
 
     private fun buildUrl(filter: Filter): String {
         val url = "https://api.freepik.com/v1/resources?" +
